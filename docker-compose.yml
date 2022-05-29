@@ -1,0 +1,154 @@
+version: '3.7'
+
+
+services:
+
+  manager-db:
+    container_name: manager-db
+    restart: always
+    image: mysql:5.7
+    ports:
+      - 3307:3306
+    expose:
+      - 3306
+    networks:
+      - services
+    volumes:
+      - manager-db-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
+
+  manager-ms:
+    image: jboss/keycloak
+    container_name: manager-ms
+    networks:
+      - services
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: manager-db
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: password
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the MySQL JDBC driver documentation in order to use it.
+      #JDBC_PARAMS: "connectTimeout=30000"
+    ports:
+      - 3003:8080
+    depends_on:
+      - manager-db
+
+  notifications-ms:
+    container_name: notifications-ms
+    build:
+      dockerfile: Dockerfile
+      context: ../notifications-ms
+      target: dev
+    env_file: ../notifications-ms/.env
+    volumes:
+      - ../notifications-ms/:/opt/app/api
+    ports:
+      - 3002:3002
+    networks:
+      - services
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    networks:
+      - services
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    networks:
+      - services
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=INFO"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    networks:
+      - services
+    depends_on:
+      - kafka
+    ports:
+      - 29000:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+  
+  partners-db-cache:
+    image: "redis:alpine"
+    env_file: ../partners-ms/.env
+    container_name: partners-db-cache
+    networks:
+      - services
+    ports:
+      - 6379:6379
+    volumes:
+      - partners-db-cache-data:/data
+    command: redis-server --requirepass Redis2019!
+  
+  partners-db:
+    env_file: ../partners-ms/.env
+    image: pablords/partners-db:1.0.0
+    build:
+      context: ../partners-ms
+      dockerfile: Dockerfile.db
+    restart: always
+    container_name: partners-db
+    ports:
+      - 3306:3306
+    networks:
+      - services
+    volumes:
+      - partners-db-data:/var/lib/mysql
+    command: --innodb_use_native_aio=0 --socket=/tmp/mysql.sock --bind_address=0.0.0.0
+
+  partners-ms:
+    restart: always
+    env_file: ../partners-ms/.env
+    image: pablords/partners-ms:1.0.0
+    container_name: partners-ms
+    depends_on:
+      - partners-db
+    build: ../partners-ms
+    #entrypoint: $SPORT_CLUB_HOME/partners-ms/.docker/entrypoint.sh
+    ports:
+      - 3001:3001
+    networks:
+      - services
+    volumes:
+      - ../partners-ms/:/home/node/app
+    command: /bin/bash -c npm run dev --prefix ../partners-ms/
+
+
+
+
+volumes:
+  manager-db-data:
+  partners-db-data:
+  partners-db-cache-data:
+
+networks:
+  services:
+    driver: 'bridge'
