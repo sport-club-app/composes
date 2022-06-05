@@ -3,8 +3,8 @@ version: '3.7'
 
 services:
 
-  manager-db:
-    container_name: manager-db
+  keycloak-db:
+    container_name: keycloak-db
     restart: always
     image: mysql:5.7
     ports:
@@ -14,21 +14,21 @@ services:
     networks:
       - services
     volumes:
-      - manager-db-data:/var/lib/mysql
+      - keycloak-db-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: keycloak
       MYSQL_USER: keycloak
       MYSQL_PASSWORD: password
 
-  manager-ms:
+  keycloak:
     image: jboss/keycloak
-    container_name: manager-ms
+    container_name: keycloak
     networks:
       - services
     environment:
       DB_VENDOR: MYSQL
-      DB_ADDR: manager-db
+      DB_ADDR: keycloak-db
       DB_DATABASE: keycloak
       DB_USER: keycloak
       DB_PASSWORD: password
@@ -37,23 +37,9 @@ services:
       # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the MySQL JDBC driver documentation in order to use it.
       #JDBC_PARAMS: "connectTimeout=30000"
     ports:
-      - 3003:8080
+      - 3004:8080
     depends_on:
-      - manager-db
-      - manager-swagger-ui
-  
-  manager-swagger-ui:
-    image: swaggerapi/swagger-ui
-    container_name: manager-swagger-ui
-    ports:
-      - "8082:8080"
-    networks:
-      - services
-    volumes:
-      - ../manager-ms/docs/swagger.json:/openapi.json
-    environment:
-      SWAGGER_JSON: /openapi.json
-      # API_URL: ""
+      - keycloak-db
 
 
       
@@ -148,6 +134,7 @@ services:
     container_name: partners-ms
     depends_on:
       - partners-db
+      - manager-ms
     build: ../partners-ms
     #entrypoint: $SPORT_CLUB_HOME/partners-ms/.docker/entrypoint.sh
     ports:
@@ -159,12 +146,42 @@ services:
     command: /bin/bash -c npm run dev --prefix ../partners-ms/
 
 
+  manager-ms:
+    restart: always
+    env_file: ../manager-ms/.env
+    image: pablords/manager-ms:1.0.0
+    container_name: manager-ms
+    depends_on:
+      - keycloak-db
+      - keycloak
+      - manager-db-cache
+    build: ../manager-ms
+    ports:
+      - 3003:3003
+    networks:
+      - services
+    volumes:
+      - ../manager-ms/:/home/node/app
+    command: /bin/bash -c npm run dev --prefix ../manager-ms/
 
+
+  manager-db-cache:
+    image: "redis:alpine"
+    env_file: ../manager-ms/.env
+    container_name: manager-db-cache
+    networks:
+      - services
+    ports:
+      - 6378:6379
+    volumes:
+      - manager-db-cache-data:/data
+    command: redis-server --requirepass Redis2019!
 
 volumes:
-  manager-db-data:
+  keycloak-db-data:
   partners-db-data:
   partners-db-cache-data:
+  manager-db-cache-data:
 
 networks:
   services:
