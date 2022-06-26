@@ -129,9 +129,6 @@ services:
   partners-db:
     env_file: ../partners-ms/.env
     image: mysql:5.7
-    build:
-      context: ../partners-ms
-      dockerfile: Dockerfile.db
     restart: always
     container_name: partners-db
     ports:
@@ -224,7 +221,7 @@ services:
     container_name: payments-ms
     depends_on:
       - payments-db
-    build: .
+    build: ../payments-ms
     #entrypoint: $SPORT_CLUB_HOME/partners-ms/.docker/entrypoint.sh
     ports:
       - 3005:3005
