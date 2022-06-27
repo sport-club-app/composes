@@ -101,17 +101,20 @@ services:
       KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=INFO"
       KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
 
-  kafdrop:
-    image: obsidiandynamics/kafdrop:latest
-    container_name: kafdrop
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:latest
+    hostname: control-center
+    container_name: control-center
     networks:
       - services
     depends_on:
       - kafka
     ports:
-      - 29000:9000
+      - "9021:9021"
     environment:
-      KAFKA_BROKERCONNECT: kafka:29092
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      PORT: 9021
   
   partners-db-cache:
     image: "redis:alpine"
@@ -208,6 +211,8 @@ services:
     image: mysql:5.7
     ports:
       - 3308:3306
+    expose:
+      - 3306
     networks:
       - services
     volumes:
@@ -221,6 +226,7 @@ services:
     container_name: payments-ms
     depends_on:
       - payments-db
+      - kafka
     build: ../payments-ms
     #entrypoint: $SPORT_CLUB_HOME/partners-ms/.docker/entrypoint.sh
     ports:
@@ -237,6 +243,17 @@ services:
       timeout: 10s
   
     command: /bin/bash -c yarn start:dev --cwd ../payments-ms/
+
+  metrics-db:
+    image: mongo
+    container_name: metrics-db
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_DATABASE: metrics-db
+      MONGO_INITDB_ROOT_USERNAME: metrics-db
+      MONGO_INITDB_ROOT_PASSWORD: metrics-db
 
 volumes:
   keycloak-db-data:
