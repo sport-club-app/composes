@@ -22,11 +22,13 @@ services:
       MYSQL_PASSWORD: password
 
   keycloak:
-    image: jboss/keycloak
+    image: jboss/keycloak:16.1.1
     container_name: keycloak
     restart: unless-stopped
     networks:
       - services
+    volumes:
+      - ../manager-ms/realm-export.json:/tmp/realm-export.json
     environment:
       DB_VENDOR: MYSQL
       DB_ADDR: keycloak-db
@@ -35,6 +37,7 @@ services:
       DB_PASSWORD: password
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: admin
+      KEYCLOAK_IMPORT: /tmp/realm-export.json -Dkeycloak.profile.feature.upload_scripts=enabled
       # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the MySQL JDBC driver documentation in order to use it.
       #JDBC_PARAMS: "connectTimeout=30000"
     ports:
@@ -101,21 +104,32 @@ services:
       KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=INFO"
       KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
 
-  control-center:
-    image: confluentinc/cp-enterprise-control-center:latest
-    hostname: control-center
-    container_name: control-center
+  # control-center:
+  #   image: confluentinc/cp-enterprise-control-center:latest
+  #   hostname: control-center
+  #   container_name: control-center
+  #   networks:
+  #     - services
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "9021:9021"
+  #   environment:
+  #     CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
+  #     CONTROL_CENTER_REPLICATION_FACTOR: 1
+  #     PORT: 9021
+
+  kafka-ui:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafka-ui
     networks:
       - services
     depends_on:
       - kafka
     ports:
-      - "9021:9021"
+      - 9000:9000
     environment:
-      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
-      CONTROL_CENTER_REPLICATION_FACTOR: 1
-      PORT: 9021
-  
+      KAFKA_BROKERCONNECT: kafka:29092
   partners-db-cache:
     image: "redis:alpine"
     env_file: ../partners-ms/.env
@@ -227,6 +241,7 @@ services:
     depends_on:
       - payments-db
       - kafka
+      - metrics-db
     build: ../payments-ms
     #entrypoint: $SPORT_CLUB_HOME/partners-ms/.docker/entrypoint.sh
     ports:
@@ -250,6 +265,8 @@ services:
     restart: always
     ports:
       - 27017:27017
+    networks:
+      - services
     environment:
       MONGO_INITDB_DATABASE: metrics-db
       MONGO_INITDB_ROOT_USERNAME: metrics-db
