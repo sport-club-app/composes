@@ -5,7 +5,7 @@
   "defaultSignatureAlgorithm": "RS256",
   "revokeRefreshToken": false,
   "refreshTokenMaxReuse": 0,
-  "accessTokenLifespan": 300,
+  "accessTokenLifespan": 18000,
   "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
@@ -636,31 +636,22 @@
           "manage-users",
           "view-events",
           "query-realms",
-          "manage-authorization",
-          "impersonation",
+          "view-identity-providers",
+          "query-users",
           "view-users",
           "query-groups",
           "view-realm",
           "view-clients",
-          "manage-identity-providers",
-          "manage-events",
-          "view-authorization",
-          "realm-admin",
-          "manage-clients",
-          "view-identity-providers",
-          "manage-realm",
-          "query-users",
-          "create-client",
           "query-clients"
         ],
         "account": [
           "view-consent",
-          "manage-account",
-          "delete-account",
           "view-profile",
+          "manage-account",
           "manage-consent",
           "view-applications",
-          "manage-account-links"
+          "manage-account-links",
+          "delete-account"
         ]
       },
       "notBefore": 0,
@@ -1952,18 +1943,6 @@
   "components": {
     "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
       {
-        "id": "a302c4a8-325d-406a-86ed-ee343c26e246",
-        "name": "Allowed Client Scopes",
-        "providerId": "allowed-client-templates",
-        "subType": "anonymous",
-        "subComponents": {},
-        "config": {
-          "allow-default-scopes": [
-            "true"
-          ]
-        }
-      },
-      {
         "id": "40fd2d21-5192-4c9a-9b78-35035673a29b",
         "name": "Allowed Protocol Mapper Types",
         "providerId": "allowed-protocol-mappers",
@@ -2023,6 +2002,18 @@
         }
       },
       {
+        "id": "a302c4a8-325d-406a-86ed-ee343c26e246",
+        "name": "Allowed Client Scopes",
+        "providerId": "allowed-client-templates",
+        "subType": "anonymous",
+        "subComponents": {},
+        "config": {
+          "allow-default-scopes": [
+            "true"
+          ]
+        }
+      },
+      {
         "id": "39e59de6-5f34-4da3-aa8a-9db9b7f453c7",
         "name": "Allowed Protocol Mapper Types",
         "providerId": "allowed-protocol-mappers",
@@ -2055,6 +2046,14 @@
             "true"
           ]
         }
+      }
+    ],
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "id": "c750d41a-5a9b-4f59-9fc4-31e1a2c427d9",
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {}
       }
     ],
     "org.keycloak.keys.KeyProvider": [
