@@ -264,7 +264,6 @@ services:
     depends_on:
       - payments-db
       - kafka
-      - metrics-db
     build: ../payments-ms
     #entrypoint: $SPORT_CLUB_HOME/partners-ms/.docker/entrypoint.sh
     ports:
